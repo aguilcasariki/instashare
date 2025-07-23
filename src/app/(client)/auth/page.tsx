@@ -1,63 +1,21 @@
 "use client";
-import React, { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { auth } from "@/config/firebase";
-import { useRouter } from "next/navigation";
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-} from "firebase/auth";
-
-const schema = z.object({
-  email: z.email({ message: "Invalid email address" }),
-  password: z
-    .string()
-    .min(6, { message: "Password must be at least 6 characters" }),
-});
-
-type AuthFormValues = z.infer<typeof schema>;
+import { useAuthForm } from "@/app/(client)/auth/hooks/useAuthForm";
 
 export default function AuthPage() {
-  const [isLogin, setIsLogin] = useState(true);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
   const {
+    isLogin,
+    error,
+    loading,
     register,
     handleSubmit,
-    formState: { errors },
-    reset,
-  } = useForm<AuthFormValues>({
-    resolver: zodResolver(schema),
-  });
-
-  const onSubmit = async (data: AuthFormValues) => {
-    setLoading(true);
-    setError("");
-    try {
-      if (isLogin) {
-        await signInWithEmailAndPassword(auth, data.email, data.password);
-      } else {
-        await createUserWithEmailAndPassword(auth, data.email, data.password);
-        setIsLogin(true);
-      }
-      router.push("/");
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unknown error occurred.");
-      }
-    } finally {
-      setLoading(false);
-      reset();
-    }
-  };
+    errors,
+    onSubmit,
+    toggleMode,
+  } = useAuthForm();
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100">
@@ -94,11 +52,7 @@ export default function AuthPage() {
             <button
               type="button"
               className="text-blue-600 cursor-pointer hover:underline text-sm"
-              onClick={() => {
-                setIsLogin((v) => !v);
-                setError("");
-                reset();
-              }}
+              onClick={toggleMode}
               disabled={loading}
             >
               {isLogin
