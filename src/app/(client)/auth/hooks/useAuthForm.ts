@@ -8,6 +8,7 @@ import {
   signInWithEmailAndPassword,
 } from "firebase/auth";
 import { auth } from "@/config/firebase";
+import { toast } from "sonner";
 
 export function useAuthForm() {
   const [isLogin, setIsLogin] = useState(true);
@@ -40,23 +41,49 @@ export function useAuthForm() {
     resolver: zodResolver(schema),
   });
 
+  const firebaseErrorMessages: Record<string, string> = {
+    "auth/user-not-found": "No user found with this email.",
+    "auth/wrong-password": "Incorrect password.",
+    "auth/email-already-in-use": "Email is already in use.",
+    "auth/invalid-email": "Invalid email address.",
+    "auth/weak-password": "Password must be at least 6 characters.",
+  };
+
   const onSubmit = async (data: AuthFormValues) => {
     setLoading(true);
     setError("");
     try {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, data.email, data.password);
+        toast.success("Logged in successfully!");
       } else {
         await createUserWithEmailAndPassword(auth, data.email, data.password);
         setIsLogin(true);
+        toast.success("Account created successfully! Please log in.");
       }
       router.push("/");
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unknown error occurred.");
+      let message = "An unknown error occurred.";
+      if (
+        typeof err === "object" &&
+        err !== null &&
+        "code" in err &&
+        typeof (err as { code?: unknown }).code === "string"
+      ) {
+        const code = (err as { code: string }).code;
+        message =
+          firebaseErrorMessages[code] ||
+          (typeof err === "object" &&
+          err !== null &&
+          "message" in err &&
+          typeof (err as { message?: unknown }).message === "string"
+            ? (err as { message: string }).message
+            : message);
+      } else if (err instanceof Error) {
+        message = err.message;
       }
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
       reset();
